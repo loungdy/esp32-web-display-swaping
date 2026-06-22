@@ -1,0 +1,702 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>ESP32 Ultrasonic Radar</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
+
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: #020617;
+      color: white;
+      padding: 10px;
+    }
+
+    .container {
+      max-width: 950px;
+      margin: auto;
+      background: #0f172a;
+      padding: 14px;
+      border-radius: 16px;
+    }
+
+    h1 {
+      text-align: center;
+      color: #38bdf8;
+      font-size: 24px;
+      margin: 8px 0 14px;
+    }
+
+    .btn-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+
+    button {
+      padding: 14px;
+      color: white;
+      border: none;
+      border-radius: 12px;
+      font-size: 17px;
+      font-weight: bold;
+      touch-action: manipulation;
+      cursor: pointer;
+    }
+
+    .connect-btn {
+      background: #2563eb;
+    }
+
+    .clear-btn {
+      background: #dc2626;
+    }
+
+    .status {
+      text-align: center;
+      margin-bottom: 12px;
+      color: #22c55e;
+      font-size: 16px;
+    }
+
+    .latest {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+
+    .card {
+      background: #020617;
+      padding: 12px;
+      border-radius: 12px;
+      text-align: center;
+      font-size: 14px;
+      color: #cbd5e1;
+    }
+
+    .card span {
+      display: block;
+      margin-top: 6px;
+      font-size: 22px;
+      color: #38bdf8;
+      font-weight: bold;
+    }
+
+    .radar-box {
+  background: #020617;
+  border-radius: 14px;
+  overflow: hidden;
+  margin-bottom: 14px;
+  aspect-ratio: 1 / 1;
+}
+
+canvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+    .table-box {
+      border-radius: 12px;
+      background: #020617;
+      overflow: hidden;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 14px;
+    }
+
+    th, td {
+      padding: 9px;
+      text-align: center;
+      border-bottom: 1px solid #1e293b;
+    }
+
+    th {
+      background: #0284c7;
+    }
+
+    .near {
+      color: #ef4444;
+      font-weight: bold;
+    }
+
+    .medium {
+      color: #facc15;
+      font-weight: bold;
+    }
+
+    .far {
+      color: #22c55e;
+      font-weight: bold;
+    }
+
+    .no-object {
+      color: #94a3b8;
+    }
+
+    .hint {
+      margin-top: 12px;
+      text-align: center;
+      color: #94a3b8;
+      font-size: 13px;
+    }
+
+    .brand-card {
+      background: #020617;
+      border-radius: 16px;
+      padding: 14px;
+      margin-bottom: 14px;
+      text-align: center;
+      border: 1px solid #1e293b;
+    }
+
+    .brand-logo {
+      width: 118px;
+      height: 118px;
+      object-fit: cover;
+      border-radius: 50%;
+      border: 3px solid #38bdf8;
+      background: white;
+      margin-bottom: 8px;
+    }
+
+    .brand-title {
+      color: #38bdf8;
+      font-size: 20px;
+      font-weight: bold;
+      margin-bottom: 6px;
+    }
+
+    .brand-info {
+      color: #cbd5e1;
+      font-size: 14px;
+      line-height: 1.7;
+    }
+
+    .brand-info a, .footer-credit a {
+      color: #38bdf8;
+      text-decoration: none;
+      font-weight: bold;
+    }
+
+    .footer-credit {
+      margin-top: 14px;
+      padding: 12px;
+      text-align: center;
+      background: #020617;
+      border-radius: 12px;
+      color: #94a3b8;
+      font-size: 13px;
+      border: 1px solid #1e293b;
+    }
+
+    @media (max-width: 600px) {
+      .btn-row {
+        grid-template-columns: 1fr;
+      }
+
+      .latest {
+        grid-template-columns: 1fr;
+      }
+
+      canvas {
+        height: 300px;
+      }
+
+      table {
+        font-size: 12px;
+      }
+
+      th, td {
+        padding: 7px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+  <div class="container">
+    <div class="brand-card">
+      <img class="brand-logo" src="logo.png" alt="AD Store Logo">
+      <div class="brand-title">AD Store Electronics</div>
+      <div class="brand-info">
+        Telegram: <a href="https://t.me/adstore_electronics" target="_blank">@adstore_electronics</a><br>
+        Phone: <a href="tel:+85569981994">069 981 994</a>
+      </div>
+    </div>
+
+    <h1>ESP32 Ultrasonic Radar</h1>
+
+    <div class="btn-row">
+      <button class="connect-btn" onclick="connectBLE()">Connect Bluetooth</button>
+      <button class="clear-btn" onclick="clearData()">Clear Data</button>
+    </div>
+
+    <div class="status" id="connectionStatus">
+      Status: Not connected
+    </div>
+
+    <div class="latest">
+      <div class="card">
+        Angle
+        <span id="latestAngle">--</span>
+      </div>
+
+      <div class="card">
+        Distance
+        <span id="latestDistance">--</span>
+      </div>
+
+      <div class="card">
+        Status
+        <span id="latestStatus">--</span>
+      </div>
+    </div>
+
+    <div class="radar-box">
+      <canvas id="radarCanvas"></canvas>
+    </div>
+
+    <div class="table-box">
+      <table>
+        <thead>
+          <tr>
+            <th>No.</th>
+            <th>Time</th>
+            <th>Angle</th>
+            <th>Distance</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody id="dataTable"></tbody>
+      </table>
+    </div>
+
+    <div class="footer-credit">
+      Credit to: <strong>Pov Loungdy</strong><br>
+      Telegram: <a href="https://t.me/adstore_electronics" target="_blank">@adstore_electronics</a>
+      | Phone: <a href="tel:+85569981994">069 981 994</a>
+    </div>
+  </div>
+
+  <script>
+    const SERVICE_UUID = "12345678-1234-1234-1234-1234567890ab";
+    const CHARACTERISTIC_UUID = "abcd1234-5678-90ab-cdef-1234567890ab";
+
+    const MAX_DISTANCE = 100;
+    const MAX_TABLE_ROWS = 10;
+
+    let rowCount = 0;
+
+let radarPoints = new Array(360).fill(null);
+
+let angle1 = 0;
+let angle2 = 180;
+
+let distance1 = -1;
+let distance2 = -1;
+
+let displaySweep = 0;
+
+    let latestStatusCode = 0;
+    let latestStatusText = "No Object";
+
+    let lastTableUpdate = 0;
+    let lastTableData = null;
+
+    const canvas = document.getElementById("radarCanvas");
+    const ctx = canvas.getContext("2d");
+
+    function resizeCanvas() {
+      const dpr = window.devicePixelRatio || 1;
+      const rect = canvas.getBoundingClientRect();
+
+      canvas.width = rect.width * dpr;
+      canvas.height = rect.height * dpr;
+
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    }
+
+    window.addEventListener("resize", resizeCanvas);
+
+    setTimeout(resizeCanvas, 100);
+
+    async function connectBLE() {
+      if (!navigator.bluetooth) {
+        document.getElementById("connectionStatus").innerText =
+          "Status: Web Bluetooth not supported. Use Android Chrome.";
+        return;
+      }
+
+      try {
+        document.getElementById("connectionStatus").innerText =
+          "Status: Searching Bluetooth...";
+
+        const device = await navigator.bluetooth.requestDevice({
+          filters: [
+            { namePrefix: "ESP32-Ultrasonic-Radar" }
+          ],
+          optionalServices: [SERVICE_UUID]
+        });
+
+        document.getElementById("connectionStatus").innerText =
+          "Status: Connecting...";
+
+        const server = await device.gatt.connect();
+        const service = await server.getPrimaryService(SERVICE_UUID);
+        const characteristic = await service.getCharacteristic(CHARACTERISTIC_UUID);
+
+        await characteristic.startNotifications();
+
+        characteristic.addEventListener(
+          "characteristicvaluechanged",
+          handleRadarData
+        );
+
+        document.getElementById("connectionStatus").innerText =
+          "Status: Connected to " + device.name;
+
+        device.addEventListener("gattserverdisconnected", () => {
+          document.getElementById("connectionStatus").innerText =
+            "Status: Disconnected";
+        });
+
+      } catch (error) {
+        document.getElementById("connectionStatus").innerText =
+          "Status: Bluetooth connection failed";
+        console.error(error);
+      }
+    }
+
+    function statusTextFromCode(code) {
+      if (code === 1) return "Very Near";
+      if (code === 2) return "Near";
+      if (code === 3) return "Medium";
+      if (code === 4) return "Far";
+      return "No Object";
+    }
+
+function handleRadarData(event) {
+
+  const decoder = new TextDecoder("utf-8");
+  const text = decoder.decode(event.target.value).trim();
+
+  try {
+
+    const parts = text.split(",");
+
+    if(parts.length === 4){
+
+      angle1 = Number(parts[0]);
+      distance1 = Number(parts[1]);
+
+      angle2 = Number(parts[2]);
+      distance2 = Number(parts[3]);
+
+      radarPoints[Math.round(angle1)] = distance1;
+      radarPoints[Math.round(angle2)] = distance2;
+	lastTableData = {
+  angle: angle1,
+  distance: distance1,
+  status: "360° Scan"
+};
+      document.getElementById("latestAngle").innerText =
+        angle1 + "° / " + angle2 + "°";
+
+      document.getElementById("latestDistance").innerText =
+        distance1.toFixed(1) + " / " +
+        distance2.toFixed(1) + " cm";
+
+      document.getElementById("latestStatus").innerText =
+        "360° Scan";
+
+      return;
+    }
+
+  } catch(error){
+    console.log(error);
+  }
+}
+
+    function addTableRow(angle, distance, status) {
+      rowCount++;
+
+      const table = document.getElementById("dataTable");
+      const row = table.insertRow(0);
+      const time = new Date().toLocaleTimeString();
+
+      let statusClass = "no-object";
+
+      if (status === "Very Near" || status === "Near") {
+        statusClass = "near";
+      } else if (status === "Medium") {
+        statusClass = "medium";
+      } else if (status === "Far") {
+        statusClass = "far";
+      }
+
+      row.innerHTML = `
+        <td>${rowCount}</td>
+        <td>${time}</td>
+        <td>${angle}°</td>
+        <td>${distance >= 0 ? distance.toFixed(1) + " cm" : "No Object"}</td>
+        <td class="${statusClass}">${status}</td>
+      `;
+
+      while (table.rows.length > MAX_TABLE_ROWS) {
+        table.deleteRow(table.rows.length - 1);
+      }
+    }
+
+    function clearData() {
+      document.getElementById("dataTable").innerHTML = "";
+      rowCount = 0;
+
+      radarPoints.fill(null);
+
+distance1 = -1;
+distance2 = -1;
+
+      document.getElementById("latestAngle").innerText = "--";
+      document.getElementById("latestDistance").innerText = "--";
+      document.getElementById("latestStatus").innerText = "--";
+    }
+
+    function drawRadar() {
+      const width = canvas.clientWidth;
+      const height = canvas.clientHeight;
+
+      if (width === 0 || height === 0) return;
+
+      ctx.fillStyle = "rgba(2,6,23,0.15)";
+ctx.fillRect(0, 0, width, height);
+
+     const size = Math.min(width, height);
+
+const centerX = width / 2;
+const centerY = height / 2;
+
+const radius = (size / 2) - 25;
+
+
+      const bgGradient = ctx.createRadialGradient(
+        centerX, centerY, 10,
+        centerX, centerY, radius
+      );
+      bgGradient.addColorStop(0, "rgba(34,197,94,0.08)");
+      bgGradient.addColorStop(1, "rgba(34,197,94,0.00)");
+
+      ctx.fillStyle = bgGradient;
+      ctx.beginPath();
+      ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.strokeStyle = "rgba(34,197,94,0.45)";
+      ctx.lineWidth = 1.3;
+
+const ranges = [25, 50, 75, 100];
+
+for(let i = 0; i < ranges.length; i++) {
+
+  const cm = ranges[i];
+  const r = (cm / MAX_DISTANCE) * radius;
+
+  ctx.beginPath();
+  ctx.arc(centerX, centerY, r, 0, Math.PI * 2);
+
+  if(i === ranges.length - 1){
+    ctx.strokeStyle = "#22c55e";
+    ctx.lineWidth = 4;
+  } else {
+    ctx.strokeStyle = "rgba(34,197,94,0.45)";
+    ctx.lineWidth = 1.3;
+  }
+
+  ctx.stroke();
+
+  ctx.fillStyle = "#64748b";
+  ctx.font = "12px Arial";
+
+  ctx.fillText(
+    cm + "cm",
+    centerX + r - 35,
+    centerY - 5
+  );
+}
+
+      for (let a = 0; a < 360; a += 30) {
+        const rad = (a - 90) * Math.PI / 180;
+        const x = centerX + radius * Math.cos(rad);
+        const y = centerY + radius * Math.sin(rad);
+
+        ctx.beginPath();
+        ctx.moveTo(centerX, centerY);
+        ctx.lineTo(x, y);
+        ctx.stroke();
+
+        ctx.fillStyle = "#64748b";
+        ctx.font = "12px Arial";
+        const labelX = centerX + (radius + 18) * Math.cos(rad);
+const labelY = centerY + (radius + 18) * Math.sin(rad);
+
+ctx.fillText(a + "°", labelX - 10, labelY);
+      }
+const sweepRad =
+  (displaySweep - 90) * Math.PI / 180;
+
+const sweepX =
+  centerX + radius * Math.cos(sweepRad);
+
+const sweepY =
+  centerY + radius * Math.sin(sweepRad);
+
+const gradient =
+  ctx.createLinearGradient(
+    centerX,
+    centerY,
+    sweepX,
+    sweepY
+  );
+
+gradient.addColorStop(
+  0,
+  "rgba(56,189,248,0.05)"
+);
+
+gradient.addColorStop(
+  0.7,
+  "rgba(56,189,248,0.5)"
+);
+
+gradient.addColorStop(
+  1,
+  "rgba(56,189,248,1)"
+);
+
+ctx.strokeStyle = gradient;
+ctx.lineWidth = 4;
+
+ctx.beginPath();
+ctx.moveTo(centerX, centerY);
+ctx.lineTo(sweepX, sweepY);
+ctx.stroke();	
+for(let a=0;a<360;a++){
+
+  const d = radarPoints[a];
+
+  if(d == null) continue;
+  if(d < 0) continue;
+  if(d > MAX_DISTANCE) continue;
+
+  const rad =
+    (a - 90) * Math.PI / 180;
+
+  const rr =
+    map(d,0,MAX_DISTANCE,0,radius);
+
+  const x =
+    centerX + rr * Math.cos(rad);
+
+  const y =
+  centerY + rr * Math.sin(rad);
+
+  ctx.shadowColor = "#ef4444";
+ctx.shadowBlur = 10;
+
+const dotSize = Math.max(2, 10 - (d / 12));
+
+ctx.shadowColor = "#ef4444";
+ctx.shadowBlur = 12;
+
+ctx.fillStyle = "#ef4444";
+
+ctx.beginPath();
+ctx.arc(x, y, dotSize, 0, Math.PI * 2);
+ctx.fill();
+
+ctx.shadowBlur = 0;
+}
+      ctx.fillStyle = "#ffffff";
+      ctx.font = "16px Arial";
+ctx.fillStyle = "#38bdf8";
+ctx.beginPath();
+ctx.arc(centerX, centerY, 5, 0, Math.PI * 2);
+ctx.fill();
+
+ctx.fillStyle = "#64748b";
+ctx.font = "12px Arial";
+
+ctx.fillText(
+  "0cm",
+  centerX + 8,
+  centerY - 8
+);
+
+/* ctx.fillStyle = "#ffffff";
+ctx.font = "24px Arial";
+ctx.textAlign = "center";
+
+ctx.fillText(
+  "KH Air Defense System",
+  centerX,
+  60
+);
+*/
+ctx.textAlign = "left";
+}
+
+    function updateTableSlowly() {
+      const now = Date.now();
+
+      if (lastTableData && now - lastTableUpdate > 700) {
+        addTableRow(
+          lastTableData.angle,
+          lastTableData.distance,
+          lastTableData.status
+        );
+
+        lastTableUpdate = now;
+        lastTableData = null;
+      }
+    }
+
+    function animate() {
+
+  displaySweep += 2;
+
+  if (displaySweep >= 360) {
+    displaySweep = 0;
+  }
+
+  drawRadar();
+  updateTableSlowly();
+  requestAnimationFrame(animate);
+}
+
+    function map(value, inMin, inMax, outMin, outMax) {
+      return (value - inMin) * (outMax - outMin) /
+             (inMax - inMin) + outMin;
+    }
+
+    resizeCanvas();
+    animate();
+  </script>
+
+</body>
+</html>
